@@ -40,7 +40,10 @@ void YCSB_A::prepare_db() {
 
         // insert to db
         rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
-        assert(s.ok());
+        if (!s.ok()) {
+            std::cout << s.ToString() << std::endl;
+            exit(-1);
+        }
     }
 }
 
@@ -73,7 +76,10 @@ void YCSB_A::proceed() {
 
         // update to db
         rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
-        assert(s.ok());
+        if (!s.ok()) {
+            std::cout << s.ToString() << std::endl;
+            exit(-1);
+        }
 
     } else {
 
@@ -85,7 +91,10 @@ void YCSB_A::proceed() {
         // get from db
         rocksdb::PinnableSlice value;
         rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
-        assert(s.ok());
+        if (!s.ok()) {
+            std::cout << s.ToString() << std::endl;
+            exit(-1);
+        }
         value.Reset();
     }
 

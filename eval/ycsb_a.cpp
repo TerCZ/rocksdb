@@ -55,7 +55,10 @@ int main(int argc, char **argv) {
     // clear existing data
     std::string cmd = "rm -rf ";
     cmd += config.db_path;
-    std::system(cmd.c_str());
+    if (std::system(cmd.c_str()) != 0) {
+        std::cout << "failed to clear existing directory" << std:endl;
+        return -1;
+    }
 
     // init db
     rocksdb::DB *db;
@@ -66,7 +69,10 @@ int main(int argc, char **argv) {
     options.create_if_missing = true;
 
     rocksdb::Status s = rocksdb::DB::Open(options, config.db_path, &db);
-    assert(s.ok());
+    if (!s.ok()) {
+        std::cout << s.ToString() << std::endl;
+        return -2;
+    }
 
     // init workload
     YCSB_A ycsb_a(db, config.record_num, config.workload_size, config.key_size, config.value_size);

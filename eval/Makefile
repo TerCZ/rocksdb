@@ -14,7 +14,7 @@ endif
 
 .PHONY: clean librocksdb
 
-all: temp
+all: ycsb_a
 
 ycsb_a: librocksdb ycsb_a.cpp workload.cpp
 	$(CXX) $(CXXFLAGS) ycsb_a.cpp workload.cpp -o $@ ../librocksdb.a -I../include -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
