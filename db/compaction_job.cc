@@ -62,6 +62,9 @@
 #include "util/string_util.h"
 #include "util/sync_point.h"
 
+
+extern std::atomic<int> compaction_num;
+
 namespace rocksdb {
 
 const char* GetCompactionReasonString(CompactionReason compaction_reason) {
@@ -793,6 +796,8 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
 }
 
 void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
+  ++compaction_num;
+
   assert(sub_compact != nullptr);
   ColumnFamilyData* cfd = sub_compact->compaction->column_family_data();
   std::unique_ptr<RangeDelAggregator> range_del_agg(
@@ -1111,6 +1116,8 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
   sub_compact->c_iter.reset();
   input.reset();
   sub_compact->status = status;
+
+  --compaction_num;
 }
 
 void CompactionJob::RecordDroppedKeys(
