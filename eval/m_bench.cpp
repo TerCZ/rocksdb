@@ -27,20 +27,20 @@ unique_ptr<Workload> get_workload(rocksdb::DB *db, const Config &config) {
       return unique_ptr<Workload>(
           new GenericPointWorkload(
               db, config.key_space, config.initial_db_size, config.workload_size, config.write_ratio,
-              config.key_size, config.value_size));
+              config.key_size, config.value_size,1));
     case Config::Workload::YCSB_A:
       return unique_ptr<Workload>(
           new GenericPointWorkload(
               db, config.key_space, config.initial_db_size, config.workload_size, 0.5 /* write_ratio */,
-              config.key_size, config.value_size));
+              config.key_size, config.value_size,1));
     case Config::Workload::YCSB_B:
       return unique_ptr<Workload>(new GenericPointWorkload(
           db, config.key_space, config.initial_db_size, config.workload_size, 0.05 /* write_ratio */,
-          config.key_size, config.value_size));
+          config.key_size, config.value_size,1));
     case Config::Workload::YCSB_C:
       return unique_ptr<Workload>(new GenericPointWorkload(
           db, config.key_space, config.initial_db_size, config.workload_size, 0, /* write_ratio */
-          config.key_size, config.value_size));
+          config.key_size, config.value_size,1));
     default:assert(0);
   }
 }
