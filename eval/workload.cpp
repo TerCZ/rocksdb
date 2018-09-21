@@ -56,7 +56,7 @@ void GenericPointWorkload::proceed() {
   string key = from_key_id_to_str(key_id);
 
   double choice = choice_dist(random_engine);
-  if (choice > write_ratio) {  // write
+  if (choice < write_ratio) {  // write
     // gen random value
     string value = random_value();
 
