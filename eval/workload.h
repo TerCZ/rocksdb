@@ -5,32 +5,40 @@
 #ifndef ROCKSDB_WORKLOAD_H
 #define ROCKSDB_WORKLOAD_H
 
-
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/options.h"
 
+class Workload {
+ public:
+  virtual ~Workload() {};
+  virtual void prepare_db() = 0;
+  virtual void proceed() = 0;
+  virtual bool is_finished() = 0;
+};
 
-class YCSB_A {
-public:
-    YCSB_A(rocksdb::DB *db, int record_num, int workload_size, int key_size = 8, int value_size = 1024);
+class GenericPointWorkload : public Workload {
+ public:
+  GenericPointWorkload(
+      rocksdb::DB *db, int key_space, int initial_db_size, int workload_size, double write_ratio,
+      int key_size, int value_size);
+  ~GenericPointWorkload() {}
+  virtual void prepare_db() override final;
+  virtual void proceed() override final;
+  virtual bool is_finished() override final;
 
-    void prepare_db();
+ private:
+  std::string from_key_id_to_str(int key_i);
+  std::string random_value();
 
-    void proceed();
+  rocksdb::DB *db;
+  const int initial_db_size;
 
-    bool is_finished();
+  const int key_space, workload_size;
+  const int key_size, value_size;
+  const double write_ratio;
 
-private:
-    rocksdb::DB *db;
-
-    int record_num;
-    int workload_size;
-
-    int key_size;
-    int value_size;
-
-    int finished_num;
+  int finished_num;
 };
 
 #endif //ROCKSDB_WORKLOAD_H

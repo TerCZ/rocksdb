@@ -1,8 +1,11 @@
-db_path /hdd/rocks_data
-out_path .
-ops_per_sample_period 5000
-record_num 5000000 10000000 20000000
-workload_size 20000000 40000000
-key_size 8
-value_size 128
-iter_num 5
+db_path                 ./rocks_data
+initial_db_size         100
+key_space               200
+workload_size           1000
+key_size                8
+value_size              128
+write_ratio             0.8
+ops_per_sample_period   10
+iter_num                1
+out_path                .
+workload                WriteOnly

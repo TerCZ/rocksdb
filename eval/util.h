@@ -11,9 +11,16 @@
 
 struct Config {
   std::string db_path;
+  int initial_db_size;
+
+  int key_space, workload_size, key_size, value_size;
+  double write_ratio;
+
+  int ops_per_sample_period, iter_num;
   std::string out_path;
-  int workload_size, ops_per_sample_period, iter_num;
-  int record_num, key_size, value_size;
+
+  enum Workload { WriteOnly, YCSB_A };
+  Workload workload;
 };
 
 struct Stat {

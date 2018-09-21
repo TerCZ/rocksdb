@@ -8,99 +8,100 @@
 #include <string>
 #include "workload.h"
 
+using namespace std;
 
-YCSB_A::YCSB_A(rocksdb::DB *db, int record_num, int workload_size, int key_size, int value_size)
-        : db(db),
-          record_num(record_num),
-          workload_size(workload_size),
-          key_size(key_size),
-          value_size(value_size),
-          finished_num(0) {}
-
-// populate db with uniform-distributed random value
-void YCSB_A::prepare_db() {
-
-    std::default_random_engine key_generator, value_generator;
-    std::uniform_int_distribution<int> distribution;
-
-    for (int i = 0; i < record_num; ++i) {
-        // construct random key of length key_size
-        std::string key = std::to_string(i);
-        key.resize(key_size, 'x');
-
-        // construct random value of length value_size
-        int value_off = 0;
-        std::string value;
-        while (value_off < value_size) {
-            int random_int = distribution(value_generator);
-            int append_len = value_size - value_off > sizeof(random_int) ? sizeof(random_int) : value_size - value_off;
-            value += std::string(reinterpret_cast<char *>(&random_int), append_len);
-            value_off += append_len;
-        }
-
-        // insert to db
-        rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
-        if (!s.ok()) {
-            std::cout << s.ToString() << std::endl;
-            exit(-1);
-        }
-    }
+GenericPointWorkload::GenericPointWorkload(
+    rocksdb::DB *db, int key_space, int initial_db_size, int workload_size, double write_ratio,
+    int key_size, int value_size)
+    : db(db),
+      key_space(key_space),
+      initial_db_size(initial_db_size),
+      workload_size(workload_size),
+      write_ratio(write_ratio),
+      key_size(key_size),
+      value_size(value_size),
+      finished_num(0) {
+  assert(key_space > 0);
+  assert(initial_db_size >= 0);
+  assert(workload_size >= 0);
+  assert(write_ratio >= 0 && write_ratio <= 1);
+  assert(key_size > 0 && value_size > 0);
 }
 
-// proceed the workload with one more operation
-void YCSB_A::proceed() {
+void GenericPointWorkload::prepare_db() {
+  default_random_engine random_engine;
+  uniform_int_distribution<int> val_dist, key_dist(0, key_space);
 
-    static std::default_random_engine generator;
-    static std::uniform_int_distribution<int> uniform_int_distribution;
-    static std::uniform_real_distribution<double> uniform_real_distribution(0, 1);
+  for (int i = 0; i < initial_db_size; ++i) {
+    // construct random key and value
+    int key_id = key_dist(random_engine);
+    string key = from_key_id_to_str(key_id);
+    string value = random_value();
 
-    double choice = uniform_real_distribution(generator);
-
-    // 50% update, 50% read
-    if (choice > 0.5) {  // update
-
-        // construct an existing key
-        int key_int = uniform_int_distribution(generator) % record_num;
-        std::string key = std::to_string(key_int);
-        key.resize(key_size, 'x');
-
-        // construct new random value of length value_size
-        int value_off = 0;
-        std::string value;
-        while (value_off < value_size) {
-            int random_int = uniform_int_distribution(generator);
-            int append_len = value_size - value_off > sizeof(random_int) ? sizeof(random_int) : value_size - value_off;
-            value += std::string(reinterpret_cast<char *>(&random_int), append_len);
-            value_off += append_len;
-        }
-
-        // update to db
-        rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
-        if (!s.ok()) {
-            std::cout << s.ToString() << std::endl;
-            exit(-1);
-        }
-
-    } else {
-
-        // construct an existing key
-        int key_int = uniform_int_distribution(generator) % record_num;
-        std::string key = std::to_string(key_int);
-        key.resize(key_size, 'x');
-
-        // get from db
-        rocksdb::PinnableSlice value;
-        rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
-        if (!s.ok()) {
-            std::cout << s.ToString() << std::endl;
-            exit(-1);
-        }
-        value.Reset();
+    // insert to db
+    rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
+    if (!s.ok()) {
+      cout << s.ToString() << endl;
+      exit(-1);
     }
-
-    ++finished_num;
+  }
 }
 
-bool YCSB_A::is_finished() {
-    return finished_num >= workload_size;
+void GenericPointWorkload::proceed() {
+  static default_random_engine random_engine;
+  static uniform_int_distribution<int> key_dist(0, key_space);
+  static uniform_real_distribution<double> choice_dist(0, 1);
+
+  int key_id = key_dist(random_engine);
+  string key = from_key_id_to_str(key_id);
+
+  double choice = choice_dist(random_engine);
+  if (choice > write_ratio) {  // write
+    // gen random value
+    string value = random_value();
+
+    // write db
+    rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
+    if (!s.ok()) {
+      cout << s.ToString() << endl;
+      exit(-1);
+    }
+  } else {
+    // get from db
+    rocksdb::PinnableSlice value;
+    rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
+    if (!s.ok() && !s.IsNotFound()) {
+      cout << s.ToString() << endl;
+      exit(-1);
+    }
+    value.Reset();
+  }
+
+  ++finished_num;
+}
+
+string GenericPointWorkload::from_key_id_to_str(int key_i) {
+  string key = to_string(key_i);
+  key.resize(key_size, 'x');  // TODO: maybe hashing is better
+  return key;
+}
+
+string GenericPointWorkload::random_value() {
+  static default_random_engine random_engine;
+  static uniform_int_distribution<int> uniform_dist;
+
+  int value_off = 0;
+  string value;
+  while (value_off < value_size) {
+    int random_int = uniform_dist(random_engine);
+    int append_len = value_size - value_off > sizeof(random_int) ? sizeof(random_int) : value_size - value_off;
+    value += string(reinterpret_cast<char *>(&random_int), append_len);
+    value_off += append_len;
+  }
+
+  return value;
+}
+
+bool GenericPointWorkload::is_finished() {
+  return finished_num >= workload_size;
 }

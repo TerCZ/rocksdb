@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cassert>
 #include <cstdlib>
+#include <iostream>
 
 using namespace std;
 
@@ -25,7 +26,12 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
 
   // container for configurations
   string db_path, out_path;
-  vector<int> ops_per_sample_periods, record_nums, workload_sizes, key_sizes, value_sizes, iter_nums;
+  vector<int> ops_per_sample_periods, initial_db_sizes, workload_sizes, key_sizes, value_sizes, iter_nums;
+  vector<double> write_ratios;
+  vector<Config::Workload> workloads;
+
+  int key_space, workload_size, key_size, value_size;
+  double write_ratio;
 
   // read them all
   while (!getline(infile, line_str).eof()) {
@@ -43,11 +49,11 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
         line_stream >> ops_per_sample_period;
         ops_per_sample_periods.push_back(ops_per_sample_period);
       }
-    } else if (start == "record_num") {
-      while (!line_stream.eof()) {  // there can be multiple record_num
-        int record_num;
-        line_stream >> record_num;
-        record_nums.push_back(record_num);
+    } else if (start == "initial_db_size") {
+      while (!line_stream.eof()) {  // there can be multiple initial_db_size
+        int initial_db_size;
+        line_stream >> initial_db_size;
+        initial_db_sizes.push_back(initial_db_size);
       }
     } else if (start == "workload_size") {
       while (!line_stream.eof()) {  // there can be multiple workload_size
@@ -73,30 +79,51 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
         line_stream >> iter_num;
         iter_nums.push_back(iter_num);
       }
+    } else if (start == "workload") {
+      while (!line_stream.eof()) {  // there can be multiple workload
+        string workload;
+        line_stream >> workload;
+        if (workload == "YCSB_A") {
+          workloads.push_back(Config::Workload::YCSB_A);
+        } else if (workload == "WriteOnly") {
+          workloads.push_back(Config::Workload::WriteOnly);
+        }
+      }
+    } else if (start == "write_ratio") {
+      while (!line_stream.eof()) {  // there can be multiple write_ratio
+        double write_ratio;
+        line_stream >> write_ratio;
+        write_ratios.push_back(write_ratio);
+      }
     }
-
   }
 
   // error asserting
   assert((db_path != "" && out_path != ""));
 
   // construct grid search configs
-  for (int ops_per_sample_period: ops_per_sample_periods) {
-    for (int record_num: record_nums) {
-      for (int workload_size: workload_sizes) {
-        for (int key_size: key_sizes) {
-          for (int value_size: value_sizes) {
-            for (int iter_num: iter_nums) {
-              Config config;
-              config.db_path = db_path;
-              config.out_path = out_path;
-              config.ops_per_sample_period = ops_per_sample_period;
-              config.record_num = record_num;
-              config.workload_size = workload_size;
-              config.key_size = key_size;
-              config.value_size = value_size;
-              config.iter_num = iter_num;
-              configs.push_back(config);
+  for (Config::Workload workload: workloads) {
+    for (int ops_per_sample_period: ops_per_sample_periods) {
+      for (double write_ratio: write_ratios) {
+        for (int initial_db_size: initial_db_sizes) {
+          for (int workload_size: workload_sizes) {
+            for (int key_size: key_sizes) {
+              for (int value_size: value_sizes) {
+                for (int iter_num: iter_nums) {
+                  Config config;
+                  config.db_path = db_path;
+                  config.out_path = out_path;
+                  config.ops_per_sample_period = ops_per_sample_period;
+                  config.initial_db_size = initial_db_size;
+                  config.workload_size = workload_size;
+                  config.key_size = key_size;
+                  config.value_size = value_size;
+                  config.iter_num = iter_num;
+                  config.workload = workload;
+                  config.write_ratio = write_ratio;
+                  configs.push_back(config);
+                }
+              }
             }
           }
         }
@@ -120,7 +147,7 @@ void output_header(ofstream &out) {
 
 void output_entry(ofstream &out, const Stat &stat, const Config &config) {
   out << config.ops_per_sample_period << '\t'
-      << config.record_num << '\t'
+      << config.initial_db_size << '\t'
       << config.workload_size << '\t'
       << config.key_size << '\t'
       << config.value_size << '\t'

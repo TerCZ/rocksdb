@@ -9,6 +9,7 @@
 #include <vector>
 #include <sstream>
 #include <cmath>
+#include <memory>
 
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
@@ -39,8 +40,19 @@ Stat run_config_once(const Config &config) {
   }
 
   // init workload
-  YCSB_A ycsb_a(db, config.record_num, config.workload_size, config.key_size, config.value_size);
-  ycsb_a.prepare_db();
+  unique_ptr<Workload> workload;
+  if (config.workload == Config::Workload::WriteOnly) {
+    workload = unique_ptr<Workload>(new GenericPointWorkload(
+        db, config.key_space, config.initial_db_size, config.workload_size, 1, config.key_size, config.value_size));
+  } else if (config.workload == Config::Workload::YCSB_A) {
+    workload = unique_ptr<Workload>(new GenericPointWorkload(
+        db, config.key_space, config.initial_db_size, config.workload_size, 0.5, config.key_size, config.value_size));
+  } else {
+    workload = unique_ptr<Workload>(new GenericPointWorkload(
+        db, config.key_space, config.initial_db_size, config.workload_size, config.write_ratio,
+        config.key_size, config.value_size));
+  }
+  workload->prepare_db();
 
   // statistics variables
   Stat stat;
@@ -48,7 +60,7 @@ Stat run_config_once(const Config &config) {
   stat.compaction_ops = 0, stat.non_compaction_ops = 0;
 
   // run the workload
-  while (!ycsb_a.is_finished()) {
+  while (!workload->is_finished()) {
 
     // check if this period should count as compaction period
     bool compaction_on_going = compaction_num > 0;
@@ -57,8 +69,8 @@ Stat run_config_once(const Config &config) {
     auto start_time = chrono::steady_clock::now();
 
     // execute at most ops_per_sample_period operations
-    for (int i = 0; i < config.ops_per_sample_period && !ycsb_a.is_finished(); ++i) {
-      ycsb_a.proceed();
+    for (int i = 0; i < config.ops_per_sample_period && !workload->is_finished(); ++i) {
+      workload->proceed();
     }
 
     // stop timing
