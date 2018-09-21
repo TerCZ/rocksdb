@@ -9,18 +9,24 @@
 #ifndef ROCKSDB_UTIL_H
 #define ROCKSDB_UTIL_H
 
-struct Config {
-  std::string db_path;
-  int initial_db_size;
-
-  int key_space, workload_size, key_size, value_size;
-  double write_ratio;
-
-  int ops_per_sample_period, iter_num;
-  std::string out_path;
-
+class Config {
+ public:
   enum Workload { GenericPoint, YCSB_A, YCSB_B, YCSB_C };
-  Workload workload;
+
+  Config(
+      std::string db_path, int initial_db_size, int key_space, int workload_size, int key_size, int value_size,
+      double write_ratio, int ops_per_sample_period, int iter_num, std::string out_path, Workload workload);
+
+  const std::string db_path;
+  const int initial_db_size;
+
+  const int key_space, workload_size, key_size, value_size;
+  const double write_ratio;
+
+  const int ops_per_sample_period, iter_num;
+  const std::string out_path;
+
+  const Workload workload;
 };
 
 struct Stat {
