@@ -21,6 +21,30 @@ using namespace std;
 
 atomic<int> compaction_num(0);
 
+unique_ptr<Workload> get_workload(rocksdb::DB *db, const Config &config) {
+  switch (config.workload) {
+    case Config::Workload::GenericPoint:
+      return unique_ptr<Workload>(
+          new GenericPointWorkload(
+              db, config.key_space, config.initial_db_size, config.workload_size, config.write_ratio,
+              config.key_size, config.value_size));
+    case Config::Workload::YCSB_A:
+      return unique_ptr<Workload>(
+          new GenericPointWorkload(
+              db, config.key_space, config.initial_db_size, config.workload_size, 0.5 /* write_ratio */,
+              config.key_size, config.value_size));
+    case Config::Workload::YCSB_B:
+      return unique_ptr<Workload>(new GenericPointWorkload(
+          db, config.key_space, config.initial_db_size, config.workload_size, 0.05 /* write_ratio */,
+          config.key_size, config.value_size));
+    case Config::Workload::YCSB_C:
+      return unique_ptr<Workload>(new GenericPointWorkload(
+          db, config.key_space, config.initial_db_size, config.workload_size, 0, /* write_ratio */
+          config.key_size, config.value_size));
+    default:assert(0);
+  }
+}
+
 Stat run_config_once(const Config &config) {
   // clear existing data
   clear_folder(config.db_path);
@@ -40,18 +64,7 @@ Stat run_config_once(const Config &config) {
   }
 
   // init workload
-  unique_ptr<Workload> workload;
-  if (config.workload == Config::Workload::WriteOnly) {
-    workload = unique_ptr<Workload>(new GenericPointWorkload(
-        db, config.key_space, config.initial_db_size, config.workload_size, 1, config.key_size, config.value_size));
-  } else if (config.workload == Config::Workload::YCSB_A) {
-    workload = unique_ptr<Workload>(new GenericPointWorkload(
-        db, config.key_space, config.initial_db_size, config.workload_size, 0.5, config.key_size, config.value_size));
-  } else {
-    workload = unique_ptr<Workload>(new GenericPointWorkload(
-        db, config.key_space, config.initial_db_size, config.workload_size, config.write_ratio,
-        config.key_size, config.value_size));
-  }
+  unique_ptr<Workload> workload = get_workload(db, config);
   workload->prepare_db();
 
   // statistics variables

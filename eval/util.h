@@ -19,7 +19,7 @@ struct Config {
   int ops_per_sample_period, iter_num;
   std::string out_path;
 
-  enum Workload { WriteOnly, YCSB_A };
+  enum Workload { GenericPoint, YCSB_A, YCSB_B, YCSB_C };
   Workload workload;
 };
 

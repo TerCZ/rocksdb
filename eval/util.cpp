@@ -85,8 +85,14 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
         line_stream >> workload;
         if (workload == "YCSB_A") {
           workloads.push_back(Config::Workload::YCSB_A);
-        } else if (workload == "WriteOnly") {
-          workloads.push_back(Config::Workload::WriteOnly);
+        } else if (workload == "YCSB_B") {
+          workloads.push_back(Config::Workload::YCSB_B);
+        } else if (workload == "YCSB_C") {
+          workloads.push_back(Config::Workload::YCSB_C);
+        } else if (workload == "GenericPoint") {
+          workloads.push_back(Config::Workload::GenericPoint);
+        } else {
+          assert(0);
         }
       }
     } else if (start == "write_ratio") {
@@ -102,14 +108,52 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
   assert((db_path != "" && out_path != ""));
 
   // construct grid search configs
-  for (Config::Workload workload: workloads) {
-    for (int ops_per_sample_period: ops_per_sample_periods) {
-      for (double write_ratio: write_ratios) {
+  for (int ops_per_sample_period: ops_per_sample_periods) {
+    for (Config::Workload workload: workloads) {
+      if (workload != Config::Workload::GenericPoint) {
+        for (double write_ratio: write_ratios) {
+          for (int initial_db_size: initial_db_sizes) {
+            for (int workload_size: workload_sizes) {
+              for (int key_size: key_sizes) {
+                for (int value_size: value_sizes) {
+                  for (int iter_num: iter_nums) {
+                    Config config;
+                    config.db_path = db_path;
+                    config.out_path = out_path;
+                    config.ops_per_sample_period = ops_per_sample_period;
+                    config.initial_db_size = initial_db_size;
+                    config.workload_size = workload_size;
+                    config.key_size = key_size;
+                    config.value_size = value_size;
+                    config.iter_num = iter_num;
+                    config.workload = workload;
+                    config.write_ratio = write_ratio;
+                    configs.push_back(config);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
         for (int initial_db_size: initial_db_sizes) {
           for (int workload_size: workload_sizes) {
             for (int key_size: key_sizes) {
               for (int value_size: value_sizes) {
                 for (int iter_num: iter_nums) {
+                  double write_ratio;
+                  switch (workload) {
+                    case Config::Workload::YCSB_A:
+                      write_ratio = 0.5;
+                      break;
+                    case Config::Workload::YCSB_B:
+                      write_ratio = 0.5;
+                      break;
+                    case Config::Workload::YCSB_C:
+                      write_ratio = 0;
+                      break;
+                  }
+
                   Config config;
                   config.db_path = db_path;
                   config.out_path = out_path;
@@ -134,8 +178,10 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
 
 void output_header(ofstream &out) {
   out << "sample frequency (op)\t"
+         "key space\t"
          "initial db size (record)\t"
          "workload size (op)\t"
+         "write ratio\t"
          "key size (B)\t"
          "value size (B)\t"
          "compaction time (s)\t"
@@ -147,8 +193,10 @@ void output_header(ofstream &out) {
 
 void output_entry(ofstream &out, const Stat &stat, const Config &config) {
   out << config.ops_per_sample_period << '\t'
+      << config.key_space << '\t'
       << config.initial_db_size << '\t'
       << config.workload_size << '\t'
+      << config.write_ratio << '\t'
       << config.key_size << '\t'
       << config.value_size << '\t'
       << stat.compaction_time << '\t'

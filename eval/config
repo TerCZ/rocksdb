@@ -8,4 +8,4 @@ write_ratio             0.8
 ops_per_sample_period   10
 iter_num                1
 out_path                .
-workload                WriteOnly
+workload                GenericPoint
