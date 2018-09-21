@@ -26,12 +26,9 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
 
   // container for configurations
   string db_path, out_path;
-  vector<int> ops_per_sample_periods, initial_db_sizes, workload_sizes, key_sizes, value_sizes, iter_nums;
+  vector<int> ops_per_sample_periods, initial_db_sizes, workload_sizes, key_spaces, key_sizes, value_sizes, iter_nums;
   vector<double> write_ratios;
   vector<Config::Workload> workloads;
-
-  int key_space, workload_size, key_size, value_size;
-  double write_ratio;
 
   // read them all
   while (!getline(infile, line_str).eof()) {
@@ -60,6 +57,12 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
         int workload_size;
         line_stream >> workload_size;
         workload_sizes.push_back(workload_size);
+      }
+    } else if (start == "key_space") {
+      while (!line_stream.eof()) {  // there can be multiple key_space
+        int key_space;
+        line_stream >> key_space;
+        key_spaces.push_back(key_space);
       }
     } else if (start == "key_size") {
       while (!line_stream.eof()) {  // there can be multiple key_size
@@ -110,10 +113,29 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
   // construct grid search configs
   for (int ops_per_sample_period: ops_per_sample_periods) {
     for (Config::Workload workload: workloads) {
-      if (workload != Config::Workload::GenericPoint) {
-        for (double write_ratio: write_ratios) {
-          for (int initial_db_size: initial_db_sizes) {
-            for (int workload_size: workload_sizes) {
+      vector<double> actual_ratios;
+      if (workload == Config::Workload::GenericPoint) {
+        actual_ratios = write_ratios;
+      } else {
+        double write_ratio;
+        switch (workload) {
+          case Config::Workload::YCSB_A:
+            write_ratio = 0.5;
+            break;
+          case Config::Workload::YCSB_B:
+            write_ratio = 0.05;
+            break;
+          case Config::Workload::YCSB_C:
+            write_ratio = 0;
+            break;
+        }
+        actual_ratios.push_back(write_ratio);
+      }
+
+      for (double write_ratio: actual_ratios) {
+        for (int initial_db_size: initial_db_sizes) {
+          for (int workload_size: workload_sizes) {
+            for (int key_space: key_spaces) {
               for (int key_size: key_sizes) {
                 for (int value_size: value_sizes) {
                   for (int iter_num: iter_nums) {
@@ -123,6 +145,7 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
                     config.ops_per_sample_period = ops_per_sample_period;
                     config.initial_db_size = initial_db_size;
                     config.workload_size = workload_size;
+                    config.write_ratio = write_ratio;
                     config.key_size = key_size;
                     config.value_size = value_size;
                     config.iter_num = iter_num;
@@ -130,42 +153,6 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
                     config.write_ratio = write_ratio;
                     configs.push_back(config);
                   }
-                }
-              }
-            }
-          }
-        }
-      } else {
-        for (int initial_db_size: initial_db_sizes) {
-          for (int workload_size: workload_sizes) {
-            for (int key_size: key_sizes) {
-              for (int value_size: value_sizes) {
-                for (int iter_num: iter_nums) {
-                  double write_ratio;
-                  switch (workload) {
-                    case Config::Workload::YCSB_A:
-                      write_ratio = 0.5;
-                      break;
-                    case Config::Workload::YCSB_B:
-                      write_ratio = 0.5;
-                      break;
-                    case Config::Workload::YCSB_C:
-                      write_ratio = 0;
-                      break;
-                  }
-
-                  Config config;
-                  config.db_path = db_path;
-                  config.out_path = out_path;
-                  config.ops_per_sample_period = ops_per_sample_period;
-                  config.initial_db_size = initial_db_size;
-                  config.workload_size = workload_size;
-                  config.key_size = key_size;
-                  config.value_size = value_size;
-                  config.iter_num = iter_num;
-                  config.workload = workload;
-                  config.write_ratio = write_ratio;
-                  configs.push_back(config);
                 }
               }
             }
