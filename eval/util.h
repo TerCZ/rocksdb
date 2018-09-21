@@ -9,33 +9,25 @@
 #ifndef ROCKSDB_UTIL_H
 #define ROCKSDB_UTIL_H
 
-
 struct Config {
-    std::string db_path;
-    std::string out_path;
-    int ops_per_sample_period;
-    int record_num;
-    int workload_size;
-    int key_size;
-    int value_size;
-    int iter_num;
+  std::string db_path;
+  std::string out_path;
+  int workload_size, ops_per_sample_period, iter_num;
+  int record_num, key_size, value_size;
 };
-
 
 struct Stat {
-    double compaction_time, non_compaction_time;
-    int compaction_ops, non_compaction_ops;
-    long long final_db_size;
+  double compaction_time, non_compaction_time;
+  int compaction_ops, non_compaction_ops;
+  long long final_db_size;
 };
-
 
 struct AggregatedStat {
-    double compaction_time_mean, compaction_time_std;
-    double non_compaction_time_mean, non_compaction_time_std;
-    double compaction_throughput_mean, compaction_throughput_std;
-    double non_compaction_throughput_mean, non_compaction_throughput_std;
+  double compaction_time_mean, compaction_time_std;
+  double non_compaction_time_mean, non_compaction_time_std;
+  double compaction_throughput_mean, compaction_throughput_std;
+  double non_compaction_throughput_mean, non_compaction_throughput_std;
 };
-
 
 void parse_config(int argc, char **argv, std::vector<Config> &configs);
 void output_header(std::ofstream &out);

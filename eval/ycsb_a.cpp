@@ -16,102 +16,98 @@
 #include "workload.h"
 #include "util.h"
 
-
 using namespace std;
 
 atomic<int> compaction_num(0);
 
-
 Stat run_config_once(const Config &config) {
-    // clear existing data
-    clear_folder(config.db_path);
+  // clear existing data
+  clear_folder(config.db_path);
 
-    // init db
-    rocksdb::DB *db;
-    rocksdb::Options options;
+  // init db
+  rocksdb::DB *db;
+  rocksdb::Options options;
 
-    options.IncreaseParallelism();
-    options.OptimizeLevelStyleCompaction();
-    options.create_if_missing = true;
+  options.IncreaseParallelism();
+  options.OptimizeLevelStyleCompaction();
+  options.create_if_missing = true;
 
-    rocksdb::Status s = rocksdb::DB::Open(options, config.db_path, &db);
-    if (!s.ok()) {
-        cout << s.ToString() << endl;
-        exit(-2);
+  rocksdb::Status s = rocksdb::DB::Open(options, config.db_path, &db);
+  if (!s.ok()) {
+    cout << s.ToString() << endl;
+    exit(-2);
+  }
+
+  // init workload
+  YCSB_A ycsb_a(db, config.record_num, config.workload_size, config.key_size, config.value_size);
+  ycsb_a.prepare_db();
+
+  // statistics variables
+  Stat stat;
+  stat.compaction_time = 0, stat.non_compaction_time = 0;
+  stat.compaction_ops = 0, stat.non_compaction_ops = 0;
+
+  // run the workload
+  while (!ycsb_a.is_finished()) {
+
+    // check if this period should count as compaction period
+    bool compaction_on_going = compaction_num > 0;
+
+    // start timing
+    auto start_time = chrono::steady_clock::now();
+
+    // execute at most ops_per_sample_period operations
+    for (int i = 0; i < config.ops_per_sample_period && !ycsb_a.is_finished(); ++i) {
+      ycsb_a.proceed();
     }
 
-    // init workload
-    YCSB_A ycsb_a(db, config.record_num, config.workload_size, config.key_size, config.value_size);
-    ycsb_a.prepare_db();
+    // stop timing
+    auto end_time = chrono::steady_clock::now();
 
-    // statistics variables
-    Stat stat;
-    stat.compaction_time = 0, stat.non_compaction_time = 0;
-    stat.compaction_ops = 0, stat.non_compaction_ops = 0;
-
-    // run the workload
-    while (!ycsb_a.is_finished()) {
-
-        // check if this period should count as compaction period
-        bool compaction_on_going = compaction_num > 0;
-
-        // start timing
-        auto start_time = chrono::steady_clock::now();
-
-        // execute at most ops_per_sample_period operations
-        for (int i = 0; i < config.ops_per_sample_period && !ycsb_a.is_finished(); ++i) {
-            ycsb_a.proceed();
-        }
-
-        // stop timing
-        auto end_time = chrono::steady_clock::now();
-
-        // update statistics
-        double duration =
-                chrono::duration_cast < chrono::duration < double >> (end_time - start_time).count();
-        if (compaction_on_going) {
-            stat.compaction_time += duration;
-            stat.compaction_ops += config.ops_per_sample_period;
-        } else {
-            stat.non_compaction_time += duration;
-            stat.non_compaction_ops += config.ops_per_sample_period;
-        }
+    // update statistics
+    double duration =
+        chrono::duration_cast<chrono::duration<double >>(end_time - start_time).count();
+    if (compaction_on_going) {
+      stat.compaction_time += duration;
+      stat.compaction_ops += config.ops_per_sample_period;
+    } else {
+      stat.non_compaction_time += duration;
+      stat.non_compaction_ops += config.ops_per_sample_period;
     }
+  }
 
-    stat.final_db_size = get_folder_size(config.db_path);
+  stat.final_db_size = get_folder_size(config.db_path);
 
-    // close db
-    delete db;
+  // close db
+  delete db;
 
-    return stat;
+  return stat;
 }
-
 
 void run_config(const Config config) {
-    // open output file
-    ofstream outfile(config.out_path + "/result", ofstream::app);
+  // open output file
+  ofstream outfile(config.out_path + "/result", ofstream::app);
 
-    // output header
-    output_header(outfile);
+  // output header
+  output_header(outfile);
 
-    // run several time to average the result
-    vector <Stat> stats;
-    for (int i = 0; i < config.iter_num; ++i) {
-        cout << "run-" << i << "..." << endl;
-        Stat stat = run_config_once(config);
-        output_entry(outfile, stat, config);
-    }
+  // run several time to average the result
+  vector<Stat> stats;
+  for (int i = 0; i < config.iter_num; ++i) {
+    cout << "run-" << i << "..." << endl;
+    Stat stat = run_config_once(config);
+    output_entry(outfile, stat, config);
+  }
 }
-
 
 int main(int argc, char **argv) {
 
-    // parse config
-    vector <Config> configs;
-    parse_config(argc, argv, configs);
+  // parse config
+  vector<Config> configs;
+  parse_config(argc, argv, configs);
 
-    // run each config
-    for (const Config &config: configs) {
-        run_config(config);
-    }
+  // run each config
+  for (const Config &config: configs) {
+    run_config(config);
+  }
 }
