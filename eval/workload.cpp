@@ -50,15 +50,19 @@ void GenericPointWorkload::prepare_db() {
 }
 
 void GenericPointWorkload::proceed() {
-  static default_random_engine random_engine;
-  static uniform_int_distribution<int> key_dist(0, key_space);
-  static uniform_real_distribution<double> choice_dist(0, 1);
-
-  if(type!=2)
-  int key_id = key_dist(random_engine);
-  else key_id = key_dist(random_engine)*key_dist(random_engine)/key_space;
+   static default_random_engine random_engine;
+   static uniform_int_distribution<int> key_dist(0, key_space);
+   static uniform_real_distribution<double> choice_dist(0, 1);
+   int key_id;
+   if(type!=2)
+   key_id= key_dist(random_engine);
+   else key_id = key_dist(random_engine)*key_dist(random_engine)/key_space;
+ 
+   
    string key = from_key_id_to_str(key_id);  
+
    double choice = choice_dist(random_engine);
+
    if(type==1||type==2){
      if (choice > write_ratio) {  // write
        // gen random value
@@ -106,7 +110,7 @@ void GenericPointWorkload::proceed() {
     }
 }
   if(type==4){
-  string value = random_value();
+  
 
        // write db
        std::string value;
