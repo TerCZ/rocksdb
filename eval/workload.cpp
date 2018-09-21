@@ -12,7 +12,7 @@ using namespace std;
 
 GenericPointWorkload::GenericPointWorkload(
     rocksdb::DB *db, int key_space, int initial_db_size, int workload_size, double write_ratio,
-    int key_size, int value_size,int type)
+    int key_size, int value_size)
     : db(db),
       key_space(key_space),
       initial_db_size(initial_db_size),
@@ -20,7 +20,7 @@ GenericPointWorkload::GenericPointWorkload(
       write_ratio(write_ratio),
       key_size(key_size),
       value_size(value_size),
-      finished_num(0),type(type) {
+      finished_num(0) {
   assert(key_space > 0);
   assert(initial_db_size >= 0);
   assert(workload_size >= 0);
@@ -29,9 +29,7 @@ GenericPointWorkload::GenericPointWorkload(
 }
 
 void GenericPointWorkload::prepare_db() {
-
   default_random_engine random_engine;
-
   uniform_int_distribution<int> val_dist, key_dist(0, key_space);
 
   for (int i = 0; i < initial_db_size; ++i) {
@@ -54,78 +52,30 @@ void GenericPointWorkload::proceed() {
   static uniform_int_distribution<int> key_dist(0, key_space);
   static uniform_real_distribution<double> choice_dist(0, 1);
 
-  if(type!=2)
   int key_id = key_dist(random_engine);
-  else key_id = key_dist(random_engine)*key_dist(random_engine)/key_space;
-   string key = from_key_id_to_str(key_id);  
-   double choice = choice_dist(random_engine);
-   if(type==1||type==2){
-     if (choice > write_ratio) {  // write
-       // gen random value
-       string value = random_value();
+  string key = from_key_id_to_str(key_id);
 
-       // write db
-       rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
-       if (!s.ok()) {
-         cout << s.ToString() << endl;
-         exit(-1);
-       }
-     } else {
-       // get from db
-       rocksdb::PinnableSlice value;
-       rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
-       if (!s.ok() && !s.IsNotFound()) {
-         cout << s.ToString() << endl;
-         exit(-1);
-       }
-       value.Reset();
-     }
-  }
-  if(type==3){
-   std::string start,end;
+  double choice = choice_dist(random_engine);
+  if (choice > write_ratio) {  // write
+    // gen random value
+    string value = random_value();
 
-   rocksdb::Status s;
-
-   rocksdb::Iterator* it = db->NewIterator(rocksdb::ReadOptions());
-
-
-   if(key_id-10<0) start =from_key_id_to_str(0);
-
-   else start =from_key_id_to_str(key_id);
-
-   if(key_id>=key_space) end =from_key_id_to_str(key_space);
-
-   else end =from_key_id_to_str(key_id);
-
-
-   for (it->Seek(start);
-
-        it->Valid() && it->key().ToString() < end;
-        it->Next()) {
-
+    // write db
+    rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
+    if (!s.ok()) {
+      cout << s.ToString() << endl;
+      exit(-1);
     }
-}
-  if(type==4){
-  string value = random_value();
-
-       // write db
-       std::string value;
-       rocksdb::Status s;
-       s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
-       if (!s.ok() && !s.IsNotFound()) {
-         cout << s.ToString() << endl;
-         exit(-1);
-       }
-       value.pop_back();
-    
-       value=value+'1'; 
-       s = db->Put(rocksdb::WriteOptions(), key, value);
-       if (!s.ok()) {
-         cout << s.ToString() << endl;
-         exit(-1);
-       }
-  
-}
+  } else {
+    // get from db
+    rocksdb::PinnableSlice value;
+    rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
+    if (!s.ok() && !s.IsNotFound()) {
+      cout << s.ToString() << endl;
+      exit(-1);
+    }
+    value.Reset();
+  }
 
   ++finished_num;
 }

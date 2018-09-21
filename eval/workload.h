@@ -21,7 +21,7 @@ class GenericPointWorkload : public Workload {
  public:
   GenericPointWorkload(
       rocksdb::DB *db, int key_space, int initial_db_size, int workload_size, double write_ratio,
-      int key_size, int value_size,int type);
+      int key_size, int value_size);
   ~GenericPointWorkload() {}
   virtual void prepare_db() override final;
   virtual void proceed() override final;
@@ -33,11 +33,11 @@ class GenericPointWorkload : public Workload {
 
   rocksdb::DB *db;
   const int initial_db_size;
-   
+
   const int key_space, workload_size;
   const int key_size, value_size;
   const double write_ratio;
-  const int type;
+
   int finished_num;
 };
 
