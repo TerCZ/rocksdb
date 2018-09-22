@@ -82,22 +82,37 @@ Stat run_config_once(const Config &config) {
     auto start_time = chrono::steady_clock::now();
 
     // execute at most ops_per_sample_period operations
+    vector<double> latencies;
     for (int i = 0; i < config.ops_per_sample_period && !workload->is_finished(); ++i) {
-      workload->proceed();
+
+      // latency sample
+      bool sample_latency = i % (config.ops_per_sample_period / config.latency_sample_per_sample_period) == 0;
+      if (sample_latency) {
+        auto query_start = chrono::steady_clock::now();
+
+        workload->proceed();
+
+        auto query_end = chrono::steady_clock::now();
+        double duration = chrono::duration_cast<chrono::duration<double>>(query_end - query_start).count();
+        latencies.push_back(duration);
+      } else {
+        workload->proceed();
+      }
     }
 
     // stop timing
     auto end_time = chrono::steady_clock::now();
 
     // update statistics
-    double duration =
-        chrono::duration_cast<chrono::duration<double >>(end_time - start_time).count();
+    double duration = chrono::duration_cast<chrono::duration<double>>(end_time - start_time).count();
     if (compaction_on_going) {
       stat.compaction_time += duration;
       stat.compaction_ops += config.ops_per_sample_period;
+      stat.compaction_latencies.insert(stat.compaction_latencies.end(), latencies.begin(), latencies.end());
     } else {
       stat.non_compaction_time += duration;
       stat.non_compaction_ops += config.ops_per_sample_period;
+      stat.non_compaction_latencies.insert(stat.non_compaction_latencies.end(), latencies.begin(), latencies.end());
     }
   }
 
@@ -106,6 +121,7 @@ Stat run_config_once(const Config &config) {
   // close db
   delete db;
 
+  stat.finish_latency_stat();
   return stat;
 }
 
@@ -126,6 +142,11 @@ int main(int argc, char **argv) {
   parse_config(argc, argv, configs);
 
   // open output file
+  if (configs.size() == 0) {
+    cout << "no valid config read" << endl;
+    exit(-1);
+  }
+
   ofstream outfile(configs[0].out_path + "/result", ofstream::app);
 
   // output header

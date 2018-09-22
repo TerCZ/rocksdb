@@ -12,6 +12,8 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
+#include <numeric>
 
 using namespace std;
 
@@ -23,6 +25,7 @@ Config::Config(std::string db_path,
                int value_size,
                double write_ratio,
                int ops_per_sample_period,
+               int latency_sample_per_sample_period,
                int iter_num,
                std::string out_path,
                Config::Workload workload)
@@ -34,9 +37,40 @@ Config::Config(std::string db_path,
       value_size(value_size),
       write_ratio(write_ratio),
       ops_per_sample_period(ops_per_sample_period),
+      latency_sample_per_sample_period(latency_sample_per_sample_period),
       iter_num(iter_num),
       out_path(out_path),
       workload(workload) {}
+
+template<class ValT>
+ValT average(vector<ValT> vals) {
+  ValT init = 0;
+  return accumulate(vals.begin(), vals.end(), init) / vals.size();
+}
+
+void Stat::finish_latency_stat() {
+  if (compaction_latencies.size() > 0) {
+    sort(compaction_latencies.begin(), compaction_latencies.end());
+    compaction_latency_mean = average(compaction_latencies);
+    compaction_latency_95 = compaction_latencies[compaction_latencies.size() * 95 / 100];
+    compaction_latency_99 = compaction_latencies[compaction_latencies.size() * 99 / 100];
+  } else {
+    compaction_latency_mean = 0;
+    compaction_latency_95 = 0;
+    compaction_latency_99 = 0;
+  }
+
+  if (non_compaction_latencies.size() > 0) {
+    sort(non_compaction_latencies.begin(), non_compaction_latencies.end());
+    non_compaction_latency_mean = average(non_compaction_latencies);
+    non_compaction_latency_95 = non_compaction_latencies[non_compaction_latencies.size() * 95 / 100];
+    non_compaction_latency_99 = non_compaction_latencies[non_compaction_latencies.size() * 99 / 100];
+  } else {
+    non_compaction_latency_mean = 0;
+    non_compaction_latency_95 = 0;
+    non_compaction_latency_99 = 0;
+  }
+}
 
 void parse_config(int argc, char **argv, vector<Config> &configs) {
   assert(argc == 2);
@@ -49,7 +83,8 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
 
   // container for configurations
   string db_path, out_path;
-  vector<int> ops_per_sample_periods, initial_db_sizes, workload_sizes, key_spaces, key_sizes, value_sizes, iter_nums;
+  vector<int> ops_per_sample_periods, latency_sample_per_sample_periods, initial_db_sizes, workload_sizes, key_spaces,
+      key_sizes, value_sizes, iter_nums;
   vector<double> write_ratios;
   vector<Config::Workload> workloads;
 
@@ -68,6 +103,12 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
         int ops_per_sample_period;
         line_stream >> ops_per_sample_period;
         ops_per_sample_periods.push_back(ops_per_sample_period);
+      }
+    } else if (start == "latency_sample_per_sample_period") {
+      while (!line_stream.eof()) {  // there can be multiple latency_sample_per_sample_period
+        int latency_sample_per_sample_period;
+        line_stream >> latency_sample_per_sample_period;
+        latency_sample_per_sample_periods.push_back(latency_sample_per_sample_period);
       }
     } else if (start == "initial_db_size") {
       while (!line_stream.eof()) {  // there can be multiple initial_db_size
@@ -135,36 +176,38 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
 
   // construct grid search configs
   for (int ops_per_sample_period: ops_per_sample_periods) {
-    for (Config::Workload workload: workloads) {
-      // only care about user specified write ratio when using GenericPoint workload
-      vector<double> actual_ratios;
+    for (int latency_sample_per_sample_period: latency_sample_per_sample_periods) {
+      for (Config::Workload workload: workloads) {
+        // only care about user specified write ratio when using GenericPoint workload
+        vector<double> actual_ratios;
 
-      if (workload == Config::Workload::GenericPoint) {
-        actual_ratios = write_ratios;
-      } else {
-        double write_ratio;
-        switch (workload) {
-          case Config::Workload::YCSB_A:write_ratio = 0.5;
-            break;
-          case Config::Workload::YCSB_B:write_ratio = 0.05;
-            break;
-          case Config::Workload::YCSB_C:write_ratio = 0;
-            break;
+        if (workload == Config::Workload::GenericPoint) {
+          actual_ratios = write_ratios;
+        } else {
+          double write_ratio;
+          switch (workload) {
+            case Config::Workload::YCSB_A:write_ratio = 0.5;
+              break;
+            case Config::Workload::YCSB_B:write_ratio = 0.05;
+              break;
+            case Config::Workload::YCSB_C:write_ratio = 0;
+              break;
+          }
+          actual_ratios.push_back(write_ratio);
         }
-        actual_ratios.push_back(write_ratio);
-      }
 
-      for (double write_ratio: actual_ratios) {
-        for (int initial_db_size: initial_db_sizes) {
-          for (int workload_size: workload_sizes) {
-            for (int key_space: key_spaces) {
-              for (int key_size: key_sizes) {
-                for (int value_size: value_sizes) {
-                  for (int iter_num: iter_nums) {
-                    Config config(
-                        db_path, initial_db_size, key_space, workload_size, key_size, value_size, write_ratio,
-                        ops_per_sample_period, iter_num, out_path, workload);
-                    configs.push_back(config);
+        for (double write_ratio: actual_ratios) {
+          for (int initial_db_size: initial_db_sizes) {
+            for (int workload_size: workload_sizes) {
+              for (int key_space: key_spaces) {
+                for (int key_size: key_sizes) {
+                  for (int value_size: value_sizes) {
+                    for (int iter_num: iter_nums) {
+                      Config config(
+                          db_path, initial_db_size, key_space, workload_size, key_size, value_size, write_ratio,
+                          ops_per_sample_period, latency_sample_per_sample_period, iter_num, out_path, workload);
+                      configs.push_back(config);
+                    }
                   }
                 }
               }
@@ -186,8 +229,14 @@ void output_header(ofstream &out) {
          "value size (B)\t"
          "compaction time (s)\t"
          "compaction throughput (ops)\t"
+         "compaction latency mean (s)\t"
+         "compaction latency 95% (s)\t"
+         "compaction latency 99% (s)\t"
          "non compaction time (s)\t"
          "non compaction throughput (ops)\t"
+         "non compaction latency mean (s)\t"
+         "non compaction latency 95% (s)\t"
+         "non compaction latency 99% (s)\t"
          "final DB size (MB)" << std::endl;
 }
 
@@ -201,7 +250,13 @@ void output_entry(ofstream &out, const Stat &stat, const Config &config) {
       << config.value_size << '\t'
       << stat.compaction_time << '\t'
       << stat.compaction_ops / stat.compaction_time << '\t'
+      << stat.compaction_latency_mean << '\t'
+      << stat.compaction_latency_95 << '\t'
+      << stat.compaction_latency_99 << '\t'
       << stat.non_compaction_time << '\t'
+      << stat.non_compaction_latency_mean << '\t'
+      << stat.non_compaction_latency_95 << '\t'
+      << stat.non_compaction_latency_99 << '\t'
       << stat.non_compaction_ops / stat.non_compaction_time << '\t'
       << stat.final_db_size << endl;
 }
