@@ -220,44 +220,44 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
 }
 
 void output_header(ofstream &out) {
-  out << "sample frequency (op)\t"
-         "key space\t"
-         "initial db size (record)\t"
-         "workload size (op)\t"
-         "write ratio\t"
-         "key size (B)\t"
-         "value size (B)\t"
-         "compaction time (s)\t"
-         "compaction throughput (ops)\t"
-         "compaction latency mean (s)\t"
-         "compaction latency 95% (s)\t"
-         "compaction latency 99% (s)\t"
-         "non compaction time (s)\t"
-         "non compaction throughput (ops)\t"
-         "non compaction latency mean (s)\t"
-         "non compaction latency 95% (s)\t"
-         "non compaction latency 99% (s)\t"
+  out << "sample frequency (op), "
+         "key space, "
+         "initial db size (record), "
+         "workload size (op), "
+         "write ratio, "
+         "key size (B), "
+         "value size (B), "
+         "compaction time (s), "
+         "compaction throughput (ops), "
+         "compaction latency mean (s), "
+         "compaction latency 95% (s), "
+         "compaction latency 99% (s), "
+         "non compaction time (s), "
+         "non compaction throughput (ops), "
+         "non compaction latency mean (s), "
+         "non compaction latency 95% (s), "
+         "non compaction latency 99% (s), "
          "final DB size (MB)" << std::endl;
 }
 
 void output_entry(ofstream &out, const Stat &stat, const Config &config) {
-  out << config.ops_per_sample_period << '\t'
-      << config.key_space << '\t'
-      << config.initial_db_size << '\t'
-      << config.workload_size << '\t'
-      << config.write_ratio << '\t'
-      << config.key_size << '\t'
-      << config.value_size << '\t'
-      << stat.compaction_time << '\t'
-      << stat.compaction_ops / stat.compaction_time << '\t'
-      << stat.compaction_latency_mean << '\t'
-      << stat.compaction_latency_95 << '\t'
-      << stat.compaction_latency_99 << '\t'
-      << stat.non_compaction_time << '\t'
-      << stat.non_compaction_latency_mean << '\t'
-      << stat.non_compaction_latency_95 << '\t'
-      << stat.non_compaction_latency_99 << '\t'
-      << stat.non_compaction_ops / stat.non_compaction_time << '\t'
+  out << config.ops_per_sample_period << ", "
+      << config.key_space << ", "
+      << config.initial_db_size << ", "
+      << config.workload_size << ", "
+      << config.write_ratio << ", "
+      << config.key_size << ", "
+      << config.value_size << ", "
+      << stat.compaction_time << ", "
+      << stat.compaction_ops / stat.compaction_time << ", "
+      << stat.compaction_latency_mean << ", "
+      << stat.compaction_latency_95 << ", "
+      << stat.compaction_latency_99 << ", "
+      << stat.non_compaction_time << ", "
+      << stat.non_compaction_ops / stat.non_compaction_time << ", "
+      << stat.non_compaction_latency_mean << ", "
+      << stat.non_compaction_latency_95 << ", "
+      << stat.non_compaction_latency_99 << ", "
       << stat.final_db_size << endl;
 }
 

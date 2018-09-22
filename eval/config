@@ -1,12 +1,12 @@
-db_path                             ./rocks_data
-initial_db_size                     100
-key_space                           200
-workload_size                       1000
+db_path                             /hdd/rocks_data
+initial_db_size                     1000000
+key_space                           10000000 100000000
+workload_size                       1000000 5000000 20000000 40000000 80000000
 key_size                            8
 value_size                          128
-write_ratio                         0.8
-ops_per_sample_period               10
-latency_sample_per_sample_period    5
-iter_num                            1
+write_ratio                         0.5 0.95 1
+ops_per_sample_period               5000
+latency_sample_per_sample_period    10
+iter_num                            5
 out_path                            .
 workload                            GenericPoint

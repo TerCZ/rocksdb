@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
     exit(-1);
   }
 
-  ofstream outfile(configs[0].out_path + "/result", ofstream::app);
+  ofstream outfile(configs[0].out_path + "/result.csv", ofstream::app);
 
   // output header
   output_header(outfile);
