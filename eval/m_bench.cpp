@@ -109,13 +109,7 @@ Stat run_config_once(const Config &config) {
   return stat;
 }
 
-void run_config(const Config config) {
-  // open output file
-  ofstream outfile(config.out_path + "/result", ofstream::app);
-
-  // output header
-  output_header(outfile);
-
+void run_config(ofstream &outfile, const Config config) {
   // run several time to average the result
   vector<Stat> stats;
   for (int i = 0; i < config.iter_num; ++i) {
@@ -131,8 +125,14 @@ int main(int argc, char **argv) {
   vector<Config> configs;
   parse_config(argc, argv, configs);
 
+  // open output file
+  ofstream outfile(configs[0].out_path + "/result", ofstream::app);
+
+  // output header
+  output_header(outfile);
+
   // run each config
   for (const Config &config: configs) {
-    run_config(config);
+    run_config(outfile, config);
   }
 }
