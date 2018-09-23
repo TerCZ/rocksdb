@@ -86,7 +86,8 @@ Stat run_config_once(const Config &config) {
     for (int i = 0; i < config.ops_per_sample_period && !workload->is_finished(); ++i) {
 
       // latency sample
-      bool sample_latency = i % (config.ops_per_sample_period / config.latency_sample_per_sample_period) == 0;
+      bool sample_latency = config.latency_sample_per_sample_period > 0
+          && i % (config.ops_per_sample_period / config.latency_sample_per_sample_period) == 0;
       if (sample_latency) {
         auto query_start = chrono::steady_clock::now();
 
