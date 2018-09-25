@@ -1,11 +1,12 @@
 //
+//
 // Created by 唐楚哲 on 2018/9/19.
 //
 
 #include <atomic>
 #include <chrono>
 #include <iostream>
-#include <fstream>
+#include <fstream>enen
 #include <vector>
 #include <sstream>
 #include <cmath>
@@ -41,6 +42,21 @@ unique_ptr<Workload> get_workload(rocksdb::DB *db, const Config &config) {
       return unique_ptr<Workload>(new GenericPointWorkload(
           db, config.key_space, config.initial_db_size, config.workload_size, 0, /* write_ratio */
           config.key_size, config.value_size));
+    case Config::Workload::WorkloadD:
+      return unique_ptr<Workload>(
+          new GenericPointWorkload(db, config.key_space, config.initial_db_size,
+                                   config.workload_size, 0, /* write_ratio */
+                                   config.key_size, config.value_size));
+    case Config::Workload::WorkloadE:
+      return unique_ptr<Workload>(
+          new GenericPointWorkload(db, config.key_space, config.initial_db_size,
+                                   config.workload_size, 0, /* write_ratio */
+                                   config.key_size, config.value_size));
+    case Config::Workload::WorkloadF:
+      return unique_ptr<Workload>(
+          new GenericPointWorkload(db, config.key_space, config.initial_db_size,
+                                   config.workload_size, 0, /* write_ratio */
+                                   config.key_size, config.value_size));
     default:assert(0);
   }
 }
@@ -86,8 +102,7 @@ Stat run_config_once(const Config &config) {
     for (int i = 0; i < config.ops_per_sample_period && !workload->is_finished(); ++i) {
 
       // latency sample
-      bool sample_latency = config.latency_sample_per_sample_period > 0
-          && i % (config.ops_per_sample_period / config.latency_sample_per_sample_period) == 0;
+      bool sample_latency = i % (config.ops_per_sample_period / config.latency_sample_per_sample_period) == 0;
       if (sample_latency) {
         auto query_start = chrono::steady_clock::now();
 
@@ -144,9 +159,8 @@ int main(int argc, char **argv) {
 
   // open output file
   if (configs.size() == 0) {
-    cout << "no valid config read" << endl;
-    exit(-1);
-  }
+   exit(-1);
+ }
 
   ofstream outfile(configs[0].out_path + "/result.csv", ofstream::app);
 

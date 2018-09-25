@@ -158,6 +158,12 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
           workloads.push_back(Config::Workload::YCSB_C);
         } else if (workload == "GenericPoint") {
           workloads.push_back(Config::Workload::GenericPoint);
+        }  else if (workload == "WorkloadD") {
+          workloads.push_back(Config::Workload::GenericPoint);
+        }  else if (workload == "WorkloadE") {
+          workloads.push_back(Config::Workload::GenericPoint);
+        }  else if (workload == "WorkloadF") {
+          workloads.push_back(Config::Workload::GenericPoint);
         } else {
           assert(0);
         }
@@ -177,31 +183,31 @@ void parse_config(int argc, char **argv, vector<Config> &configs) {
   // construct grid search configs
   for (int ops_per_sample_period: ops_per_sample_periods) {
     for (int latency_sample_per_sample_period: latency_sample_per_sample_periods) {
-      for (int key_size: key_sizes) {
-        for (int value_size: value_sizes) {
-          for (int key_space: key_spaces) {
-            for (Config::Workload workload: workloads) {
-              // only care about user specified write ratio when using GenericPoint workload
-              vector<double> actual_ratios;
+      for (Config::Workload workload: workloads) {
+        // only care about user specified write ratio when using GenericPoint workload
+        vector<double> actual_ratios;
 
-              if (workload == Config::Workload::GenericPoint) {
-                actual_ratios = write_ratios;
-              } else {
-                double write_ratio;
-                switch (workload) {
-                  case Config::Workload::YCSB_A:write_ratio = 0.5;
-                    break;
-                  case Config::Workload::YCSB_B:write_ratio = 0.05;
-                    break;
-                  case Config::Workload::YCSB_C:write_ratio = 0;
-                    break;
-                }
-                actual_ratios.push_back(write_ratio);
-              }
+        if (workload == Config::Workload::GenericPoint) {
+          actual_ratios = write_ratios;
+        } else {
+          double write_ratio;
+          switch (workload) {
+            case Config::Workload::YCSB_A:write_ratio = 0.5;
+              break;
+            case Config::Workload::YCSB_B:write_ratio = 0.05;
+              break;
+            case Config::Workload::YCSB_C:write_ratio = 0;
+              break;
+          }
+          actual_ratios.push_back(write_ratio);
+        }
 
-              for (double write_ratio: actual_ratios) {
-                for (int initial_db_size: initial_db_sizes) {
-                  for (int workload_size: workload_sizes) {
+        for (double write_ratio: actual_ratios) {
+          for (int initial_db_size: initial_db_sizes) {
+            for (int workload_size: workload_sizes) {
+              for (int key_space: key_spaces) {
+                for (int key_size: key_sizes) {
+                  for (int value_size: value_sizes) {
                     for (int iter_num: iter_nums) {
                       Config config(
                           db_path, initial_db_size, key_space, workload_size, key_size, value_size, write_ratio,
@@ -241,24 +247,24 @@ void output_header(ofstream &out) {
 }
 
 void output_entry(ofstream &out, const Stat &stat, const Config &config) {
-  out << config.ops_per_sample_period << ", "
-      << config.key_space << ", "
-      << config.initial_db_size << ", "
-      << config.workload_size << ", "
-      << config.write_ratio << ", "
-      << config.key_size << ", "
-      << config.value_size << ", "
+  out //<< config.ops_per_sample_period << ", "
+      //<< config.key_space << ", "
+      //<< config.initial_db_size << ", "
+     // << config.workload_size << ", "
+      //<< config.write_ratio << ", "
+      //<< config.key_size << ", "
+      //<< config.value_size << ", "
       << stat.compaction_time << ", "
-      << stat.compaction_ops / stat.compaction_time << ", "
-      << stat.compaction_latency_mean << ", "
-      << stat.compaction_latency_95 << ", "
-      << stat.compaction_latency_99 << ", "
-      << stat.non_compaction_time << ", "
-      << stat.non_compaction_ops / stat.non_compaction_time << ", "
-      << stat.non_compaction_latency_mean << ", "
-      << stat.non_compaction_latency_95 << ", "
-      << stat.non_compaction_latency_99 << ", "
-      << stat.final_db_size << endl;
+      //<< stat.compaction_ops / stat.compaction_time << ", "
+      //<< stat.compaction_latency_mean << ", "
+     // << stat.compaction_latency_95 << ", "
+     // << stat.compaction_latency_99 << ", "
+      //<< stat.non_compaction_time << ", "
+      << stat.non_compaction_ops / stat.non_compaction_time << ", ";
+      //<< stat.non_compaction_latency_mean << ", "
+     // << stat.non_compaction_latency_95 << ", "
+     // << stat.non_compaction_latency_99 << ", "
+     // << stat.final_db_size << endl;
 }
 
 void clear_folder(std::string path) {

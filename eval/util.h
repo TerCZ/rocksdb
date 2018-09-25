@@ -11,7 +11,7 @@
 
 class Config {
  public:
-  enum Workload { GenericPoint, YCSB_A, YCSB_B, YCSB_C };
+  enum Workload { GenericPoint, YCSB_A, YCSB_B, YCSB_C ,WorkloadD,WorkloadE,WorkloadF};
 
   Config(
       std::string db_path, int initial_db_size, int key_space, int workload_size, int key_size, int value_size,
