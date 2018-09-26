@@ -52,6 +52,9 @@
 #include "util/stop_watch.h"
 #include "util/sync_point.h"
 
+
+extern std::atomic<int> flush_num;
+
 namespace rocksdb {
 
 const char* GetFlushReasonString (FlushReason flush_reason) {
@@ -198,6 +201,8 @@ Status FlushJob::Run(LogsWithPrepTracker* prep_tracker,
     return Status::OK();
   }
 
+  flush_num++;
+
   // I/O measurement variables
   PerfLevel prev_perf_level = PerfLevel::kEnableTime;
   uint64_t prev_write_nanos = 0;
@@ -263,6 +268,8 @@ Status FlushJob::Run(LogsWithPrepTracker* prep_tracker,
     stream << "file_prepare_write_nanos"
            << (IOSTATS(prepare_write_nanos) - prev_prepare_write_nanos);
   }
+
+  flush_num--;
 
   return s;
 }

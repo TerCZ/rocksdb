@@ -4,16 +4,17 @@
 
 #include "util.h"
 
-#include <vector>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <cmath>
-#include <cassert>
-#include <cstdlib>
-#include <iostream>
 #include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <numeric>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
 
 using namespace std;
 
@@ -45,8 +46,23 @@ Config::Config(
       ops_between_latency_sample(ops_between_latency_sample),
       iter_num(iter_num) {}
 
+StatEntry::StatEntry(double time,
+                     double throughput,
+                     double latency_mean,
+                     double latency_95,
+                     double latency_99,
+                     int compaction_job_n,
+                     int flush_job_n)
+    : time(time),
+      throughput(throughput),
+      latency_mean(latency_mean),
+      latency_95(latency_95),
+      latency_99(latency_99),
+      compaction_job_n(compaction_job_n),
+      flush_job_n(flush_job_n) {}
+
 template<class ValT>
-ValT average(vector <ValT> vals) {
+ValT average(vector<ValT> vals) {
   ValT init = 0;
   return accumulate(vals.begin(), vals.end(), init) / vals.size();
 }
@@ -64,7 +80,7 @@ void process_latencies(vector<double> latencies, double &latency_mean, double &l
 }
 
 template<class ValT>
-void parse_into_vector(stringstream &line_stream, vector <ValT> &vec) {
+void parse_into_vector(stringstream &line_stream, vector<ValT> &vec) {
   while (!line_stream.eof()) {  // there can be multiple db_path
     ValT option;
     line_stream >> option;
@@ -72,10 +88,10 @@ void parse_into_vector(stringstream &line_stream, vector <ValT> &vec) {
   }
 }
 
-vector <Config> parse_config(int argc, char **argv) {
+vector<Config> parse_config(int argc, char **argv) {
   assert(argc == 2);
 
-  vector <Config> configs;
+  vector<Config> configs;
 
   ifstream infile(argv[1]);
   assert(infile.is_open());
@@ -85,11 +101,11 @@ vector <Config> parse_config(int argc, char **argv) {
 
   // container for configurations
   string result_path;
-  vector <string> db_paths;
+  vector<string> db_paths;
   vector<int> initial_db_sizes, key_spaces, key_sizes, value_sizes, client_thread_ns, benchmark_durations,
       seconds_between_manager_pullings, ops_between_latency_samples, iter_nums;
   vector<double> write_ratios;
-  vector <Workload::WriteType> write_types;
+  vector<Workload::WriteType> write_types;
 
   // read them all
   while (!getline(infile, line_str).eof()) {
@@ -160,23 +176,48 @@ vector <Config> parse_config(int argc, char **argv) {
   return configs;
 }
 
-void output_header(ostream &out, const Config &config) {
-  out << "db_path: " << config.db_path << ", "
-      << "initial_db_size: " << config.initial_db_size << ", "
-      << "key_space: " << config.key_space << ", "
-      << "key_size: " << config.key_size << ", "
-      << "value_size: " << config.value_size << ", "
-      << "write_ratio: " << config.write_ratio << ", "
-      << "write_type: " << config.write_type << ", "
-      << "client_thread_n: " << config.client_thread_n << ", "
-      << "benchmark_duration: " << config.benchmark_duration << ", "
-      << "ops_between_latency_sample: " << config.ops_between_latency_sample << ", "
-      << "iter_num: " << config.iter_num << endl;
-  out << "time (s)\t"
+void output_header(ostream &out) {
+  out << "thread id\t"
+         "db path\t"
+         "initial db size\t"
+         "key space\t"
+         "key size\t"
+         "value size\t"
+         "write ratio\t"
+         "write type\t"
+         "client thread num\t"
+         "benchmark duration\t"
+         "ops between latency sample\t"
+         "compaction thread num\t"
+         "flush thread num\t"
+         "time (s)\t"
          "throughput (ops)\t"
          "mean latency (s)\t"
-         "95 latency(s)\t"
-         "99 latency(s)" << endl;
+         "95 latency (s)\t"
+         "99 latency (s)" << endl;
+}
+
+void output_entry(ostream &out,
+                  const Config &config,
+                  const StatEntry &entry) {
+  out << this_thread::get_id() << '\t'
+      << config.db_path << '\t'
+      << config.initial_db_size << '\t'
+      << config.key_space << '\t'
+      << config.key_size << '\t'
+      << config.value_size << '\t'
+      << config.write_ratio << '\t'
+      << config.write_type << '\t'
+      << config.client_thread_n << '\t'
+      << config.benchmark_duration << '\t'
+      << config.ops_between_latency_sample << '\t'
+      << entry.compaction_job_n << '\t'
+      << entry.flush_job_n << '\t'
+      << entry.time << '\t'
+      << entry.throughput << '\t'
+      << entry.latency_mean << '\t'
+      << entry.latency_95 << '\t'
+      << entry.latency_99 << endl;
 }
 
 void clear_folder(std::string path) {

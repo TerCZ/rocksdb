@@ -46,10 +46,30 @@ class Config {
   const int iter_num;
 };
 
+class StatEntry {
+ public:
+  StatEntry(double time,
+            double throughput,
+            double latency_mean,
+            double latency_95,
+            double latency_99,
+            int compaction_job_n,
+            int flush_job_n);
+
+  const double time;
+  const double throughput;
+  const double latency_mean;
+  const double latency_95;
+  const double latency_99;
+  const int compaction_job_n;
+  const int flush_job_n;
+};
+
 void process_latencies(std::vector<double> latencies, double &latency_mean, double &latency_95, double &latency_99);
 std::vector<Config> parse_config(int argc, char **argv);
 std::string to_result_filename(const Config &config);
-void output_header(std::ostream &out, const Config &config);
+void output_header(std::ostream &out);
+void output_entry(std::ostream &out, const Config &config, const StatEntry &entry);
 void clear_folder(std::string path);
 long long get_folder_size(std::string path);
 

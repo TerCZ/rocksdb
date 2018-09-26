@@ -14,6 +14,7 @@
 using namespace std;
 
 atomic<int> compaction_num(0);
+atomic<int> flush_num(0);
 
 template<class Clock, class Duration = typename Clock::duration>
 double steady_clock_duration_since(chrono::time_point<Clock, Duration> &start) {
@@ -67,7 +68,7 @@ void manager_work(const Config config,
   ofstream outfile(config.result_path + "/result", ofstream::app);
 
   // output header
-  output_header(outfile, config);
+  output_header(outfile);
 
   double duration = 0;
   while (duration < config.benchmark_duration) {
@@ -93,12 +94,8 @@ void manager_work(const Config config,
     }
     process_latencies(latencies, latency_mean, latency_95, latency_99);
 
-    // output to file
-    outfile << duration << "\t"
-            << op_count / timedelta << "\t"
-            << latency_mean << "\t"
-            << latency_95 << "\t"
-            << latency_99 << endl;
+    StatEntry entry(duration, op_count / timedelta, latency_mean, latency_95, latency_99, compaction_num, flush_num);
+    output_entry(outfile, config, entry);
   }
 
   stop = true;
