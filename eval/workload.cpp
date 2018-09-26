@@ -11,19 +11,22 @@
 using namespace std;
 
 GenericPointWorkload::GenericPointWorkload(
-    rocksdb::DB *db, int key_space, int initial_db_size, int workload_size, double write_ratio,
-    int key_size, int value_size)
+    rocksdb::DB *db,
+    int initial_db_size,
+    int key_space,
+    int key_size,
+    int value_size,
+    double write_ratio,
+    WriteType write_type)
     : db(db),
-      key_space(key_space),
       initial_db_size(initial_db_size),
-      workload_size(workload_size),
-      write_ratio(write_ratio),
+      key_space(key_space),
       key_size(key_size),
       value_size(value_size),
-      finished_num(0) {
+      write_ratio(write_ratio),
+      write_type(write_type) {
   assert(key_space > 0);
   assert(initial_db_size >= 0);
-  assert(workload_size >= 0);
   assert(write_ratio >= 0 && write_ratio <= 1);
   assert(key_size > 0 && value_size > 0);
 }
@@ -42,12 +45,12 @@ void GenericPointWorkload::prepare_db() {
     rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
     if (!s.ok()) {
       cout << s.ToString() << endl;
-      exit(-1);
+      assert(0);
     }
   }
 }
 
-void GenericPointWorkload::proceed() {
+void GenericPointWorkload::do_query() {
   static default_random_engine random_engine;
   static uniform_int_distribution<int> key_dist(0, key_space);
   static uniform_real_distribution<double> choice_dist(0, 1);
@@ -57,27 +60,44 @@ void GenericPointWorkload::proceed() {
 
   double choice = choice_dist(random_engine);
   if (choice < write_ratio) {  // write
-    // gen random value
     string value = random_value();
 
-    // write db
-    rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
-    if (!s.ok()) {
-      cout << s.ToString() << endl;
-      exit(-1);
+    if (write_type == BlindWrite) {
+      rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
+      if (!s.ok()) {
+        cout << s.ToString() << endl;
+        assert(0);
+      }
+    } else if (write_type == ReadModifyWrite) {
+      // read first, even if the key does not exist
+      rocksdb::PinnableSlice value;
+      rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
+      if (!s.ok() && !s.IsNotFound()) {
+        cout << s.ToString() << endl;
+        assert(0);
+      }
+      value.Reset();
+
+      // then write
+      s = db->Put(rocksdb::WriteOptions(), key, value);
+      if (!s.ok()) {
+        cout << s.ToString() << endl;
+        assert(0);
+      }
+    } else {
+      assert(0);
     }
+
   } else {
     // get from db
     rocksdb::PinnableSlice value;
     rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
     if (!s.ok() && !s.IsNotFound()) {
       cout << s.ToString() << endl;
-      exit(-1);
+      assert(0);
     }
     value.Reset();
   }
-
-  ++finished_num;
 }
 
 string GenericPointWorkload::from_key_id_to_str(int key_i) {
@@ -102,6 +122,27 @@ string GenericPointWorkload::random_value() {
   return value;
 }
 
-bool GenericPointWorkload::is_finished() {
-  return finished_num >= workload_size;
+std::istream &operator>>(std::istream &is, Workload::WriteType &val) {
+  string write_type_str;
+  is >> write_type_str;
+
+  if (write_type_str == "BlindWrite") {
+    val = Workload::BlindWrite;
+  } else if (write_type_str == "ReadModifyWrite") {
+    val = Workload::ReadModifyWrite;
+  } else {
+    cerr << "wrong WriteType: " << write_type_str << endl;
+  }
+
+  return is;
+}
+
+std::ostream &operator<<(std::ostream &os, Workload::WriteType &val) {
+  if (val == Workload::BlindWrite) {
+    os << "BlindWrite";
+  } else if (val == Workload::ReadModifyWrite) {
+    os << "ReadModifyWrite";
+  }
+
+  return os;
 }

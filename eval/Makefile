@@ -14,15 +14,16 @@ endif
 
 .PHONY: clean librocksdb
 
-all: m_bench
+bench_mt: bench_mt.cpp util workload librocksdb
+	$(CXX) $(CXXFLAGS) $@.cpp util.o workload.o ../librocksdb.a -o $@ -I../include -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) && rm *.o
 
 m_bench: m_bench.cpp util workload librocksdb
 	$(CXX) $(CXXFLAGS) $@.cpp util.o workload.o ../librocksdb.a -o $@ -I../include -O2 -std=c++11 $(PLATFORM_LDFLAGS) $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS) && rm *.o
 
-util: util.cpp util.h
-	$(CXX) $(CXXFLAGS) $@.cpp -c -o $@.o -O2 -std=c++11 $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
+util: util.cpp util.h workload
+	$(CXX) $(CXXFLAGS) $@.cpp -c -o $@.o -I../include -O2 -std=c++11 $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
 
-workload: workload.cpp workload.h util
+workload: workload.cpp workload.h
 	$(CXX) $(CXXFLAGS) $@.cpp -c -o $@.o -I../include -O2 -std=c++11 $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
 
 clean:
