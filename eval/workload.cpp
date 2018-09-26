@@ -44,7 +44,7 @@ void GenericPointWorkload::prepare_db() {
     // insert to db
     rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
     if (!s.ok()) {
-      cout << s.ToString() << endl;
+      cerr << s.ToString() << endl;
       assert(0);
     }
   }
@@ -65,7 +65,7 @@ void GenericPointWorkload::do_query() {
     if (write_type == BlindWrite) {
       rocksdb::Status s = db->Put(rocksdb::WriteOptions(), key, value);
       if (!s.ok()) {
-        cout << s.ToString() << endl;
+        cerr << s.ToString() << endl;
         assert(0);
       }
     } else if (write_type == ReadModifyWrite) {
@@ -73,7 +73,7 @@ void GenericPointWorkload::do_query() {
       rocksdb::PinnableSlice value;
       rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
       if (!s.ok() && !s.IsNotFound()) {
-        cout << s.ToString() << endl;
+        cerr << s.ToString() << endl;
         assert(0);
       }
       value.Reset();
@@ -81,7 +81,7 @@ void GenericPointWorkload::do_query() {
       // then write
       s = db->Put(rocksdb::WriteOptions(), key, value);
       if (!s.ok()) {
-        cout << s.ToString() << endl;
+        cerr << s.ToString() << endl;
         assert(0);
       }
     } else {
@@ -93,7 +93,7 @@ void GenericPointWorkload::do_query() {
     rocksdb::PinnableSlice value;
     rocksdb::Status s = db->Get(rocksdb::ReadOptions(), db->DefaultColumnFamily(), key, &value);
     if (!s.ok() && !s.IsNotFound()) {
-      cout << s.ToString() << endl;
+      cerr << s.ToString() << endl;
       assert(0);
     }
     value.Reset();

@@ -140,7 +140,7 @@ vector<Config> parse_config(int argc, char **argv) {
     } else if (start == "iter_num") {
       parse_into_vector(line_stream, iter_nums);
     } else {
-      cout << "wrong config: " << start << endl;
+      cerr << "wrong config: " << start << endl;
       assert(0);  // invalid config name
     }
   }
