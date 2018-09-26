@@ -74,6 +74,9 @@ void manager_work(const Config config,
   while (duration < config.benchmark_duration) {
     this_thread::sleep_for(std::chrono::seconds(config.seconds_between_manager_pulling));
     double timedelta = steady_clock_duration_since(start) - duration;
+    if (timedelta <= 0) {
+      continue;
+    }
     duration += timedelta;
 
     // get op_count and latencies from client threads
@@ -92,10 +95,15 @@ void manager_work(const Config config,
       client_latencies[i].clear();
       latency_mutexes[i].unlock();
     }
-    process_latencies(latencies, latency_mean, latency_95, latency_99);
 
-    StatEntry entry(duration, op_count / timedelta, latency_mean, latency_95, latency_99, compaction_num, flush_num);
-    output_entry(outfile, config, entry);
+    if (latencies.size() != 0) {
+      process_latencies(latencies, latency_mean, latency_95, latency_99);
+      StatEntry entry(duration, op_count / timedelta, latency_mean, latency_95, latency_99, compaction_num, flush_num);
+      output_entry(outfile, config, entry);
+    } else {
+      StatEntry entry(duration, op_count / timedelta, 0, 0, 0, compaction_num, flush_num);
+      output_entry(outfile, config, entry);
+    }
   }
 
   stop = true;
@@ -118,7 +126,7 @@ void run_config(const Config &config) {
 
   rocksdb::Status s = rocksdb::DB::Open(options, config.db_path, &db);
   if (!s.ok()) {
-    cout << s.ToString() << endl;
+    cerr << s.ToString() << endl;
     assert(0);
   }
 
