@@ -27,7 +27,7 @@ workload: workload.cpp workload.h
 	$(CXX) $(CXXFLAGS) $@.cpp -c -o $@.o -I../include -O2 -std=c++11 $(PLATFORM_CXXFLAGS) $(EXEC_LDFLAGS)
 
 clean:
-	rm -rf ./ycsb_a *.o
+	rm -rf bench_mt *.o
 
 librocksdb:
 	cd .. && $(MAKE) static_lib

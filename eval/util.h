@@ -24,7 +24,6 @@ class Config {
       Workload::WriteType write_type,
       int client_thread_n,
       int benchmark_duration,
-      int sample_duration,
       int seconds_between_manager_pulling,
       int ops_between_latency_sample,
       int iter_num);
@@ -42,7 +41,6 @@ class Config {
   const int client_thread_n;
   const int benchmark_duration;
 
-  const int sample_duration;
   const int seconds_between_manager_pulling;
   const int ops_between_latency_sample;
   const int iter_num;

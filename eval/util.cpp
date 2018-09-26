@@ -28,7 +28,6 @@ Config::Config(
     Workload::WriteType write_type,
     int client_thread_n,
     int benchmark_duration,
-    int sample_duration,
     int seconds_between_manager_pulling,
     int ops_between_latency_sample,
     int iter_num)
@@ -42,13 +41,12 @@ Config::Config(
       write_type(write_type),
       client_thread_n(client_thread_n),
       benchmark_duration(benchmark_duration),
-      sample_duration(sample_duration),
       seconds_between_manager_pulling(seconds_between_manager_pulling),
       ops_between_latency_sample(ops_between_latency_sample),
       iter_num(iter_num) {}
 
 template<class ValT>
-ValT average(vector<ValT> vals) {
+ValT average(vector <ValT> vals) {
   ValT init = 0;
   return accumulate(vals.begin(), vals.end(), init) / vals.size();
 }
@@ -66,7 +64,7 @@ void process_latencies(vector<double> latencies, double &latency_mean, double &l
 }
 
 template<class ValT>
-void parse_into_vector(stringstream &line_stream, vector<ValT> &vec) {
+void parse_into_vector(stringstream &line_stream, vector <ValT> &vec) {
   while (!line_stream.eof()) {  // there can be multiple db_path
     ValT option;
     line_stream >> option;
@@ -74,10 +72,10 @@ void parse_into_vector(stringstream &line_stream, vector<ValT> &vec) {
   }
 }
 
-vector<Config> parse_config(int argc, char **argv) {
+vector <Config> parse_config(int argc, char **argv) {
   assert(argc == 2);
 
-  vector<Config> configs;
+  vector <Config> configs;
 
   ifstream infile(argv[1]);
   assert(infile.is_open());
@@ -87,11 +85,11 @@ vector<Config> parse_config(int argc, char **argv) {
 
   // container for configurations
   string result_path;
-  vector<string> db_paths;
+  vector <string> db_paths;
   vector<int> initial_db_sizes, key_spaces, key_sizes, value_sizes, client_thread_ns, benchmark_durations,
-      sample_durations, seconds_between_manager_pullings, ops_between_latency_samples, iter_nums;
+      seconds_between_manager_pullings, ops_between_latency_samples, iter_nums;
   vector<double> write_ratios;
-  vector<Workload::WriteType> write_types;
+  vector <Workload::WriteType> write_types;
 
   // read them all
   while (!getline(infile, line_str).eof()) {
@@ -119,8 +117,6 @@ vector<Config> parse_config(int argc, char **argv) {
       parse_into_vector(line_stream, client_thread_ns);
     } else if (start == "benchmark_duration") {
       parse_into_vector(line_stream, benchmark_durations);
-    } else if (start == "sample_duration") {
-      parse_into_vector(line_stream, sample_durations);
     } else if (start == "seconds_between_manager_pulling") {
       parse_into_vector(line_stream, seconds_between_manager_pullings);
     } else if (start == "ops_between_latency_sample") {
@@ -128,6 +124,7 @@ vector<Config> parse_config(int argc, char **argv) {
     } else if (start == "iter_num") {
       parse_into_vector(line_stream, iter_nums);
     } else {
+      cout << "wrong config: " << start << endl;
       assert(0);  // invalid config name
     }
   }
@@ -142,25 +139,23 @@ vector<Config> parse_config(int argc, char **argv) {
               for (const auto write_type: write_types)
                 for (const auto client_thread_n: client_thread_ns)
                   for (const auto benchmark_duration: benchmark_durations)
-                    for (const auto sample_duration: sample_durations)
-                      for (const auto seconds_between_manager_pulling: seconds_between_manager_pullings)
-                        for (const auto ops_between_latency_sample: ops_between_latency_samples)
-                          for (const auto iter_num: iter_nums)
-                            configs.push_back(
-                                Config(result_path,
-                                       db_path,
-                                       initial_db_size,
-                                       key_space,
-                                       key_size,
-                                       value_size,
-                                       write_ratio,
-                                       write_type,
-                                       client_thread_n,
-                                       benchmark_duration,
-                                       sample_duration,
-                                       ops_between_latency_sample,
-                                       ops_between_latency_sample,
-                                       iter_num));
+                    for (const auto seconds_between_manager_pulling: seconds_between_manager_pullings)
+                      for (const auto ops_between_latency_sample: ops_between_latency_samples)
+                        for (const auto iter_num: iter_nums)
+                          configs.push_back(
+                              Config(result_path,
+                                     db_path,
+                                     initial_db_size,
+                                     key_space,
+                                     key_size,
+                                     value_size,
+                                     write_ratio,
+                                     write_type,
+                                     client_thread_n,
+                                     benchmark_duration,
+                                     seconds_between_manager_pulling,
+                                     ops_between_latency_sample,
+                                     iter_num));
 
   return configs;
 }
@@ -175,7 +170,6 @@ void output_header(ostream &out, const Config &config) {
       << "write_type: " << config.write_type << ", "
       << "client_thread_n: " << config.client_thread_n << ", "
       << "benchmark_duration: " << config.benchmark_duration << ", "
-      << "sample_duration: " << config.sample_duration << ", "
       << "ops_between_latency_sample: " << config.ops_between_latency_sample << ", "
       << "iter_num: " << config.iter_num << endl;
   out << "time (s)\t"

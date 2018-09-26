@@ -161,6 +161,9 @@ void run_config(const Config &config) {
   for (thread &t: clients) {
     t.join();
   }
+
+  // close db
+  delete db;
 }
 
 /*
